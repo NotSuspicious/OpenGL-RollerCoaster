@@ -3,6 +3,7 @@
 //
 
 #include "Spline.h"
+#include "Math.h"
 #include <iostream>
 
 std::vector<float> catmullBasis = {-0.5f, 1.0f, -0.5f, 0.0f,
@@ -11,8 +12,9 @@ std::vector<float> catmullBasis = {-0.5f, 1.0f, -0.5f, 0.0f,
                                    0.5f, -0.5f, 0.0f, 0.0f};
 
 struct Spline spline;
-int numVerticesPerSpline = 10;
+int numVerticesPerSpline = 50;
 std::vector<float> splinePoints;
+std::vector<Vector3> splineNormals;
 
 Point getPointOnSpline(float u) {
     // Calculate the step size
@@ -42,17 +44,40 @@ void initSpline() {
         std::vector<float> basisControlMatrix;
         basisControlMatrix.resize(12);
         std::vector<float> point;
+        std::vector<float> normal;
         point.resize(3);
+        normal.resize(3);
         createControlMatrix(controlMatrix, a, b, c, d);
+
+        std::vector<float> uPrimeVect;
 
         for (int j = 0; j < numVerticesPerSpline; j++) {
             float u = static_cast<float>(j) / static_cast<float>(numVerticesPerSpline - 1);
             createUMatrix(uVect, u);
+
             MultiplyMatrices(4, 4, 3, &catmullBasis[0], &controlMatrix[0], &basisControlMatrix[0]);
+
+            //Calculate the point on the spline
             MultiplyMatrices(1,4,3, &uVect[0], &basisControlMatrix[0], &point[0]);
+
             splinePoints.push_back(point[0]);
             splinePoints.push_back(point[1]);
             splinePoints.push_back(point[2]);
+
+            //Calculate the normal
+            createUPrimeMatrix(uPrimeVect, u);
+            MultiplyMatrices(1,4,3, &uPrimeVect[0], &basisControlMatrix[0], &normal[0]);
+            Vector3 normalVector (normal[0], normal[1], normal[2]);
+            normalVector.Normalize();
+            splineNormals.push_back(normalVector);
         }
     }
+}
+
+void createUPrimeMatrix(std::vector<float>& vect, float u) {
+    vect.resize(4);
+    vect[0] = 3.0f * u * u;
+    vect[1] = 2.0f * u;
+    vect[2] = 1.0f;
+    vect[3] = 0.0f;
 }

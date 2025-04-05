@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdio>
 #include <vector>
+#include "Math.h"
 
 // Represents one spline control point.
 struct Point 
@@ -12,6 +13,7 @@ extern std::vector<float> catmullBasis;
 extern struct Spline spline;
 extern int numVerticesPerSpline;
 extern std::vector<float> splinePoints;
+extern std::vector<Vector3> splineNormals;
 
 // Contains the control points of the spline.
 struct Spline
@@ -46,6 +48,19 @@ inline void createUMatrix(std::vector<float>& vect, float u) {
     vect[2] = u;
     vect[3] = 1.0f;
 }
+
+inline void normalize(std::vector<float>& vect) {
+    float length = 0.0f;
+    for (const float i : vect) {
+        length += i * i;
+    }
+    length = sqrt(length);
+    for (int i = 0; i < vect.size(); i++) {
+        vect[i] /= length;
+    }
+}
+
+void createUPrimeMatrix(std::vector<float>& vect, float u);
 
 inline void loadSpline(char * argv)
 {
