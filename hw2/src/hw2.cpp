@@ -71,6 +71,7 @@ float deltaTime = 0;
 
 VAO* pointVAO = nullptr; // VAO for the spline
 VBO* pointVBO = nullptr; // VBO for the spline
+VBO* colorVBO = nullptr; // VBO for the spline colors
 
 int LineEBOIndices = 0;
 GLuint LineEBO; // EBO for the spline
@@ -280,6 +281,10 @@ void displayFunc()
   matrix.LookAt(cameraPosition.x, cameraPosition.y, cameraPosition.z,
                 cameraTarget.x, cameraTarget.y, cameraTarget.z,
                 cameraUp.x, cameraUp.y, cameraUp.z);
+  // Default matrix lookat functiin
+  // matrix.LookAt(0.0f, 0.0f, 5.0f,
+  //               0.0f, 0.0f, 0.0f,
+  //               0.0f, 1.0f, 0.0f);
 
   // In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
   matrix.Translate(terrainTranslate[0], terrainTranslate[1], terrainTranslate[2]);
@@ -348,21 +353,36 @@ void initScene(int argc, char *argv[])
 }
 
 void generateSplineVAO() {
-
-  vector<float> colors;
   initSpline();
-  initColor(colors, splinePoints.size()/3);
+  // pointVAO = new VAO();
+  // pointVBO = new VBO(splinePoints.size(), 3, splinePoints[0].data(), GL_STATIC_DRAW);
+  // colorVBO = new VBO(splineColors.size(), 4, splineColors[0].data(), GL_STATIC_DRAW);
+  //
+  // pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
+  // pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, colorVBO, "color");
+  //
+  // vector<int> lineIndices;
+  // for (int i = 0; i < splinePoints.size()/3; i++) {
+  //   lineIndices.push_back(i);
+  // }
+  // lineIndices.push_back(RestartIndex);
+  // LineEBOIndices = lineIndices.size();
+  // glGenBuffers(1, &LineEBO);
+  // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
+  // glBufferData(GL_ELEMENT_ARRAY_BUFFER, LineEBOIndices * sizeof(int), &splineIndices[0], GL_STATIC_DRAW);
+
+
   pointVAO = new VAO();
-  pointVBO = new VBO(splinePoints.size(), 3, &splinePoints[0], GL_STATIC_DRAW);
+  pointVBO = new VBO(splinePoints.size(), 3, splinePoints[0].data(), GL_STATIC_DRAW);
+  colorVBO = new VBO(splineColors.size(), 4, splineColors[0].data(), GL_STATIC_DRAW);
 
   pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
-  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "color");
+  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, colorVBO, "color");
 
   vector<int> lineIndices;
-  for (int i = 0; i < splinePoints.size()/3; i++) {
+  for (int i = 0; i < splinePoints.size(); i++) {
     lineIndices.push_back(i);
   }
-  lineIndices.push_back(RestartIndex);
   LineEBOIndices = lineIndices.size();
   glGenBuffers(1, &LineEBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);

@@ -13,10 +13,40 @@ std::vector<float> catmullBasis = {-0.5f, 1.0f, -0.5f, 0.0f,
 
 struct Spline spline;
 int numVerticesPerSpline = 50;
-std::vector<float> splinePoints;
-std::vector<Vector3> splineNormals;
+std::vector<Vector3> splinePoints;
+std::vector<Vector4> splineColors;
+std::vector<Vector3> splineTangents;
+std::vector<int> splineIndices;
+std::vector<SplineCrossSection> splineCrossSections;
 
-Point getPointOnSpline(float u) {
+void generateSplineCrossSections(float radius, int numSegments) {
+    splineCrossSections.clear();
+    for (int i = 0; i < splinePoints.size() ; i++){
+        SplineCrossSection crossSection;
+        crossSection.position = splinePoints[i];
+        crossSection.tangent = splineTangents[i];
+        crossSection.binormal = calculateBinormalFromTangent(crossSection.tangent);
+        crossSection.normal = calculateNormalFromTangent(crossSection.tangent);
+        crossSection.startIndex = i * numSegments;
+        crossSection.generateVertices(radius, numSegments, i == 0 || i == splinePoints.size() - 1);
+        splineCrossSections.push_back(crossSection);
+    }
+}
+
+std::vector<float> Vector3ToFloat(const Vector3& vec) {
+    return {vec.x, vec.y, vec.z};
+}
+
+void generateSplineIndices() {
+    splineIndices.clear();
+    SplineCrossSection::generateFaceIndices(splineCrossSections[0], splineIndices);
+    for (int i = 0 ; i < splineCrossSections.size()-1; ++i) {
+        SplineCrossSection::generateSideIndices(splineCrossSections[i], splineCrossSections[i + 1], splineIndices);
+    }
+    SplineCrossSection::generateFaceIndices(splineCrossSections[splineCrossSections.size()-1], splineIndices);
+}
+
+Vector3 getPointOnSpline(float u) {
     // Calculate the step size
     float stepSize = 1.0f / numVerticesPerSpline;
 
@@ -24,13 +54,9 @@ Point getPointOnSpline(float u) {
     float roundedValue = std::round(u / stepSize) * stepSize;
 
     // Find the index on splinePoints
-    int index = static_cast<int>(roundedValue / stepSize) * 3;
+    int index = static_cast<int>(roundedValue / stepSize);
 
-    Point point;
-    point.x = splinePoints[index];
-    point.y = splinePoints[index + 1];
-    point.z = splinePoints[index + 2];
-    return point;
+    return splinePoints[index];
 }
 
 void initSpline() {
@@ -44,9 +70,9 @@ void initSpline() {
         std::vector<float> basisControlMatrix;
         basisControlMatrix.resize(12);
         std::vector<float> point;
-        std::vector<float> normal;
+        std::vector<float> tangent;
         point.resize(3);
-        normal.resize(3);
+        tangent.resize(3);
         createControlMatrix(controlMatrix, a, b, c, d);
 
         std::vector<float> uPrimeVect;
@@ -60,17 +86,27 @@ void initSpline() {
             //Calculate the point on the spline
             MultiplyMatrices(1,4,3, &uVect[0], &basisControlMatrix[0], &point[0]);
 
-            splinePoints.push_back(point[0]);
-            splinePoints.push_back(point[1]);
-            splinePoints.push_back(point[2]);
+            Vector3 pointVector (point[0], point[1], point[2]);
+            splinePoints.push_back(pointVector);
 
-            //Calculate the normal
+            //Calculate the tangent
             createUPrimeMatrix(uPrimeVect, u);
-            MultiplyMatrices(1,4,3, &uPrimeVect[0], &basisControlMatrix[0], &normal[0]);
-            Vector3 normalVector (normal[0], normal[1], normal[2]);
-            normalVector.Normalize();
-            splineNormals.push_back(normalVector);
+            MultiplyMatrices(1,4,3, &uPrimeVect[0], &basisControlMatrix[0], &tangent[0]);
+            Vector3 tangentVector (tangent[0], tangent[1], tangent[2]);
+            tangentVector.Normalize();
+            splineTangents.push_back(tangentVector);
         }
+    }
+    generateSplineCrossSections(0.5f, 10);
+    generateSplineIndices();
+    generateSplineColors();
+}
+
+void generateSplineColors() {
+    splineColors.clear();
+    for (int i = 0; i < splinePoints.size(); i++) {
+        Vector4 color(1.0f, 1.0f, 1.0f, 1.0f);
+        splineColors.push_back(color);
     }
 }
 
@@ -80,4 +116,12 @@ void createUPrimeMatrix(std::vector<float>& vect, float u) {
     vect[1] = 2.0f * u;
     vect[2] = 1.0f;
     vect[3] = 0.0f;
+}
+
+Vector3 calculateBinormalFromTangent(const Vector3& tangent) {
+    return Vector3::Cross(tangent, Vector3::UnitY);
+}
+
+Vector3 calculateNormalFromTangent(const Vector3& tangent){
+  return Vector3::Cross(tangent, Vector3::UnitZ);
 }
