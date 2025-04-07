@@ -60,6 +60,8 @@ struct Vector3
         }
     }
 
+    static void Normalize(Vector3& vect);
+
     static const Vector3 UnitX;
     static const Vector3 UnitY;
     static const Vector3 UnitZ;
@@ -135,7 +137,6 @@ struct Vector4
         return &x;
     }
 };
-
 
 inline Vector3 operator*(float scalar, const Vector3& vec)
 {

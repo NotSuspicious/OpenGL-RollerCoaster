@@ -12,10 +12,13 @@ std::vector<float> catmullBasis = {-0.5f, 1.0f, -0.5f, 0.0f,
                                    0.5f, -0.5f, 0.0f, 0.0f};
 
 struct Spline spline;
-int numVerticesPerSpline = 50;
+int numVerticesPerSpline = 100;
 std::vector<Vector3> splinePoints;
+
+std::vector<Vector3> splineVertices;
 std::vector<Vector4> splineColors;
 std::vector<Vector3> splineTangents;
+
 std::vector<int> splineIndices;
 std::vector<SplineCrossSection> splineCrossSections;
 
@@ -25,11 +28,22 @@ void generateSplineCrossSections(float radius, int numSegments) {
         SplineCrossSection crossSection;
         crossSection.position = splinePoints[i];
         crossSection.tangent = splineTangents[i];
-        crossSection.binormal = calculateBinormalFromTangent(crossSection.tangent);
-        crossSection.normal = calculateNormalFromTangent(crossSection.tangent);
+
+        Vector3 tangent = crossSection.tangent;
+
+        Vector3 up = (std::abs(Vector3::Dot(tangent, Vector3::UnitY).x) < 0.99f) ? Vector3::UnitY : Vector3::UnitX;
+    	Vector3 binormal = Vector3::Cross(tangent, up);
+    	binormal.Normalize();
+
+    	Vector3 normal = Vector3::Cross(binormal, tangent);
+    	normal.Normalize();
+
+        crossSection.binormal = binormal;
+        crossSection.normal = normal;
         crossSection.startIndex = i * numSegments;
         crossSection.generateVertices(radius, numSegments, i == 0 || i == splinePoints.size() - 1);
         splineCrossSections.push_back(crossSection);
+        splineVertices.insert(splineVertices.end(), crossSection.vertices.begin(), crossSection.vertices.end());
     }
 }
 
@@ -39,11 +53,11 @@ std::vector<float> Vector3ToFloat(const Vector3& vec) {
 
 void generateSplineIndices() {
     splineIndices.clear();
-    SplineCrossSection::generateFaceIndices(splineCrossSections[0], splineIndices);
-    for (int i = 0 ; i < splineCrossSections.size()-1; ++i) {
+//    SplineCrossSection::generateFaceIndices(splineCrossSections[0], splineIndices);
+    for (int i = 0 ; i < splineCrossSections.size(); ++i) {
         SplineCrossSection::generateSideIndices(splineCrossSections[i], splineCrossSections[i + 1], splineIndices);
     }
-    SplineCrossSection::generateFaceIndices(splineCrossSections[splineCrossSections.size()-1], splineIndices);
+//    SplineCrossSection::generateFaceIndices(splineCrossSections[splineCrossSections.size()-1], splineIndices);
 }
 
 Vector3 getPointOnSpline(float u) {
@@ -57,6 +71,30 @@ Vector3 getPointOnSpline(float u) {
     int index = static_cast<int>(roundedValue / stepSize);
 
     return splinePoints[index];
+}
+
+Vector3 getNextPointOnSpline(float u) {
+    float stepSize = 1.0f / numVerticesPerSpline;
+
+    float roundedValue = std::round(u / stepSize) * stepSize;
+
+    int index = static_cast<int>(roundedValue / stepSize);
+
+    if (index + 1 >= splinePoints.size()) {
+        index = 0;
+    }
+
+    return splinePoints[index + 1];
+}
+
+int getSplineIndex(float u) {
+    float stepSize = 1.0f / numVerticesPerSpline;
+
+    float roundedValue = std::round(u / stepSize) * stepSize;
+
+    int index = static_cast<int>(roundedValue / stepSize);
+
+    return index;
 }
 
 void initSpline() {
@@ -97,14 +135,14 @@ void initSpline() {
             splineTangents.push_back(tangentVector);
         }
     }
-    generateSplineCrossSections(0.5f, 10);
+    generateSplineCrossSections(0.01f, 10);
     generateSplineIndices();
     generateSplineColors();
 }
 
 void generateSplineColors() {
     splineColors.clear();
-    for (int i = 0; i < splinePoints.size(); i++) {
+    for (int i = 0; i < splineVertices.size(); i++) {
         Vector4 color(1.0f, 1.0f, 1.0f, 1.0f);
         splineColors.push_back(color);
     }
@@ -116,12 +154,4 @@ void createUPrimeMatrix(std::vector<float>& vect, float u) {
     vect[1] = 2.0f * u;
     vect[2] = 1.0f;
     vect[3] = 0.0f;
-}
-
-Vector3 calculateBinormalFromTangent(const Vector3& tangent) {
-    return Vector3::Cross(tangent, Vector3::UnitY);
-}
-
-Vector3 calculateNormalFromTangent(const Vector3& tangent){
-  return Vector3::Cross(tangent, Vector3::UnitZ);
 }

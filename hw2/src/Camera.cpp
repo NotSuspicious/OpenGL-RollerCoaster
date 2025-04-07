@@ -15,7 +15,7 @@ float cameraSplinePosition = 0.0f; // Current position on the spline
 
 void updateCameraPosition(float deltaTime) {
     cameraSplinePosition += cameraSpeed * deltaTime;
-    float cameraSplineNextPos = cameraSplinePosition+1;
+    float cameraSplineNextPos = cameraSplinePosition+0.4f;
     if (cameraSplinePosition >= spline.numPoints) {
         cameraSplinePosition = 0.0f;
     }
@@ -25,15 +25,16 @@ void updateCameraPosition(float deltaTime) {
     int cameraSplineIndex = static_cast<int>(cameraSplinePosition);
 
     Vector3 p = getPointOnSpline(cameraSplinePosition);
-    Vector3 pNext = getPointOnSpline(cameraSplineNextPos);
+	Vector3 tangent = splineTangents[getSplineIndex(cameraSplinePosition)];
+    Vector3 pNext = getNextPointOnSpline(cameraSplineNextPos);
 
     cameraPosition.x = p.x;
     cameraPosition.y = p.y;
     cameraPosition.z = p.z;
 
-    cameraTarget.x = pNext.x;
-    cameraTarget.y = pNext.y;
-    cameraTarget.z = pNext.z;
+    cameraTarget.x = p.x + tangent.x;
+    cameraTarget.y = p.y + tangent.y;
+    cameraTarget.z = p.z + tangent.z;
 
     cameraUp.x = splineCrossSections[cameraSplineIndex].normal.x;
     cameraUp.y = splineCrossSections[cameraSplineIndex].normal.y;

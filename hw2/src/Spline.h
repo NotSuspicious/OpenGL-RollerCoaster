@@ -13,12 +13,11 @@ extern std::vector<float> catmullBasis;
 extern struct Spline spline;
 extern int numVerticesPerSpline;
 extern std::vector<Vector3> splinePoints;
+extern std::vector<Vector3> splineVertices;
 extern std::vector<Vector4> splineColors;
 extern std::vector<int> splineIndices;
 extern std::vector<Vector3> splineTangents;
 extern std::vector<struct SplineCrossSection> splineCrossSections;
-
-
 
 struct SplineCrossSection {
     Vector3 normal, binormal, tangent;
@@ -33,14 +32,15 @@ struct SplineCrossSection {
             const float angle = Math::TwoPi * i / numSegments;
             Vector3 cos = radius * std::cos(angle) * binormal;
             Vector3 sin = radius * std::sin(angle) * normal;
-            vertices.push_back(sin + cos);
+            vertices.push_back(position + sin + cos);
         }
         if (isFace) {
-            vertices.push_back(position);
+            // vertices.push_back(position);
         }
     }
 
     static void generateSideIndices(const SplineCrossSection& a, const SplineCrossSection& b, std::vector<int>& indices) {
+
         for (int i = 0 ; i < a.vertices.size(); ++i) {
             int aIndex = a.startIndex + i;
             int bNextIndex = b.startIndex + (i + 1) % b.vertices.size();
@@ -56,15 +56,15 @@ struct SplineCrossSection {
         }
     }
 
-    static void generateFaceIndices(const SplineCrossSection& a, std::vector<int>& indices) {
-        for (int i = 0; i < a.vertices.size(); ++i) {
-            int index = a.startIndex + i;
-            int nextIndex = (i + 1) % a.vertices.size();
-            indices.push_back(index);
-            indices.push_back(a.centerVertexIndex);
-            indices.push_back(nextIndex);
-        }
-    }
+    // static void generateFaceIndices(const SplineCrossSection& a, std::vector<int>& indices) {
+    //     for (int i = 0; i < a.vertices.size(); ++i) {
+    //         int index = a.startIndex + i;
+    //         int nextIndex = (i + 1) % a.vertices.size();
+    //         indices.push_back(index);
+    //         indices.push_back(a.centerVertexIndex);
+    //         indices.push_back(nextIndex);
+    //     }
+    // }
 };
 
 // Contains the control points of the spline.
@@ -101,9 +101,6 @@ inline void createUMatrix(std::vector<float>& vect, float u) {
     vect[3] = 1.0f;
 }
 
-Vector3 calculateNormalFromTangent(const Vector3& tangent);
-Vector3 calculateBinormalFromTangent(const Vector3& tangent);
-
 void createUPrimeMatrix(std::vector<float>& vect, float u);
 
 inline void loadSpline(char * argv)
@@ -138,6 +135,8 @@ inline void loadSpline(char * argv)
 
 void initSpline();
 Vector3 getPointOnSpline(float u);
+int getSplineIndex(float u);
+Vector3 getNextPointOnSpline(float u);
 void generateSplineVAO();
 void generateSplineIndices();
 void generateSplineColors();

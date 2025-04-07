@@ -354,46 +354,24 @@ void initScene(int argc, char *argv[])
 
 void generateSplineVAO() {
   initSpline();
-  // pointVAO = new VAO();
-  // pointVBO = new VBO(splinePoints.size(), 3, splinePoints[0].data(), GL_STATIC_DRAW);
-  // colorVBO = new VBO(splineColors.size(), 4, splineColors[0].data(), GL_STATIC_DRAW);
-  //
-  // pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
-  // pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, colorVBO, "color");
-  //
-  // vector<int> lineIndices;
-  // for (int i = 0; i < splinePoints.size()/3; i++) {
-  //   lineIndices.push_back(i);
-  // }
-  // lineIndices.push_back(RestartIndex);
-  // LineEBOIndices = lineIndices.size();
-  // glGenBuffers(1, &LineEBO);
-  // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
-  // glBufferData(GL_ELEMENT_ARRAY_BUFFER, LineEBOIndices * sizeof(int), &splineIndices[0], GL_STATIC_DRAW);
-
 
   pointVAO = new VAO();
-  pointVBO = new VBO(splinePoints.size(), 3, splinePoints[0].data(), GL_STATIC_DRAW);
-  colorVBO = new VBO(splineColors.size(), 4, splineColors[0].data(), GL_STATIC_DRAW);
+  pointVBO = new VBO(splineVertices.size(), 3, splineVertices[0].data(), GL_STATIC_DRAW);
+  colorVBO = new VBO(splineVertices.size(), 4, splineVertices[0].data(), GL_STATIC_DRAW);
 
   pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
   pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, colorVBO, "color");
 
-  vector<int> lineIndices;
-  for (int i = 0; i < splinePoints.size(); i++) {
-    lineIndices.push_back(i);
-  }
-  LineEBOIndices = lineIndices.size();
+  LineEBOIndices = splineIndices.size();
   glGenBuffers(1, &LineEBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, LineEBOIndices * sizeof(int), &lineIndices[0], GL_STATIC_DRAW);
-
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, LineEBOIndices * sizeof(int), &splineIndices[0], GL_STATIC_DRAW);
 }
 
 void drawGeometry() {
   pointVAO->Bind();
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
-  glDrawElements(GL_LINE_STRIP, LineEBOIndices, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, LineEBOIndices, GL_UNSIGNED_INT, 0);
 }
 
 
