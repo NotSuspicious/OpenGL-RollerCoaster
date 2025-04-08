@@ -6,7 +6,7 @@
 #include "Spline.h"
 #include <iostream>
 
-Point cameraPosition = {0.0f, 0.0f, 0.0f};
+Vector3 cameraPosition = Vector3(0.0f, 0.0f, 0.0f);
 Point cameraRollPitchYaw = {0.0f, 0.0f, 0.0f};
 Point cameraTarget = {0.0f, 0.0f, 0.0f};
 Point cameraUp = {0.0f, 1.0f, 0.0f};
@@ -31,6 +31,7 @@ void updateCameraPosition(float deltaTime) {
     cameraPosition.x = p.x;
     cameraPosition.y = p.y;
     cameraPosition.z = p.z;
+    cameraPosition = cameraPosition + splineCrossSections[cameraSplineIndex].normal * 0.5f;
 
     cameraTarget.x = p.x + tangent.x;
     cameraTarget.y = p.y + tangent.y;

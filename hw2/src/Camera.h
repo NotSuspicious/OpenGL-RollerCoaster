@@ -7,7 +7,7 @@
 #include "Spline.h"
 #include "../../openGLHelper/openGLMatrix.h"
 
-extern Point cameraPosition;
+extern Vector3 cameraPosition;
 extern Point cameraRollPitchYaw;
 extern Point cameraTarget;
 extern Point cameraUp;

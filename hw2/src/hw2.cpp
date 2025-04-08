@@ -39,7 +39,7 @@
 #if defined(WIN32) || defined(_WIN32)
   char shaderBasePath[1024] = SHADER_BASE_PATH;
 #else
-  char shaderBasePath[1024] = "../openGLHelper";
+  char shaderBasePath[1024] = "../hw2/src/shaders";
 #endif
 
 using namespace std;
@@ -74,16 +74,23 @@ VAO* pointVAO = nullptr; // VAO for the spline
 VBO* pointVBO = nullptr; // VBO for the spline
 VBO* colorVBO = nullptr; // VBO for the spline colors
 
+GLuint texHandle = 0; // Texture handle
+
 Lighting* lighting = nullptr;
 
 int LineEBOIndices = 0;
 GLuint LineEBO; // EBO for the spline
+
+VAO* PlaneVAO = nullptr; // VAO for the plane
+int PlaneEBOIndices = 0;
+GLuint PlaneEBO; // EBO for the plane
 
 // Number of vertices in the single triangle (starter code).
 
 // CSCI 420 helper classes.
 OpenGLMatrix matrix;
 PipelineProgram * pipelineProgram = nullptr;
+PipelineProgram* groundPipelineProgram = nullptr;
 
 const int RestartIndex = 0xFFFF;
 
@@ -108,6 +115,12 @@ void Cleanup() {
   {
     delete pipelineProgram;
     pipelineProgram = nullptr;
+  }
+
+  if (groundPipelineProgram != nullptr)
+  {
+    delete groundPipelineProgram;
+    groundPipelineProgram = nullptr;
   }
 
   // Clean up the VAO and VBOs.
@@ -319,90 +332,15 @@ void displayFunc()
   float n[16];
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
   matrix.GetNormalMatrix(n);
-  pipelineProgram->SetUniformVariableMatrix4fv("normalMatrix", GL_FALSE, n);
 
   // Get projection matrix
   float projectionMatrix[16];
   matrix.SetMatrixMode(OpenGLMatrix::Projection);
   matrix.GetMatrix(projectionMatrix);
 
-  lighting->UpdateLightingUniform(pipelineProgram, modelViewMatrix);
-
-  pipelineProgram->SetUniformVariableMatrix4fv("modelViewMatrix", GL_FALSE, modelViewMatrix);
-  pipelineProgram->SetUniformVariableMatrix4fv("projectionMatrix", GL_FALSE, projectionMatrix);
-
-  drawGeometry();
+  drawGeometry(modelViewMatrix, projectionMatrix, n);
   // Swap the double-buffers.
   glutSwapBuffers();
-}
-
-void initScene(int argc, char *argv[])
-{
-  // Set the background color.
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black color.
-
-  // Enable z-buffering (i.e., hidden surface removal using the z-buffer algorithm).
-  glEnable(GL_DEPTH_TEST);
-
-  // Create a pipeline program. This operation must be performed BEFORE we initialize any VAOs.
-  // A pipeline program contains our shaders. Different pipeline programs may contain different shaders.
-  // In this homework, we only have one set of shaders, and therefore, there is only one pipeline program.
-  // In hw2, we will need to shade different objects with different shaders, and therefore, we will have
-  // several pipeline programs (e.g., one for the rails, one for the ground/sky, etc.).
-  pipelineProgram = new PipelineProgram(); // Load and set up the pipeline program, including its shaders.
-  // Load and set up the pipeline program, including its shaders.
-  if (pipelineProgram->BuildShadersFromFiles(shaderBasePath, "vertexShader.glsl", "fragmentShader.glsl") != 0)
-  {
-    cout << "Failed to build the pipeline program." << endl;
-    throw 1;
-  } 
-  cout << "Successfully built the pipeline program." << endl;
-    
-  // Bind the pipeline program that we just created. 
-  // The purpose of binding a pipeline program is to activate the shaders that it contains, i.e.,
-  // any object rendered from that point on, will use those shaders.
-  // When the application starts, no pipeline program is bound, which means that rendering is not set up.
-  // So, at some point (such as below), we need to bind a pipeline program.
-  // From that point on, exactly one pipeline program is bound at any moment of time.
-  pipelineProgram->Bind();
-
-  generateSplineVAO();
-  lighting = new Lighting();
-
-  // Check for any OpenGL errors.
-  std::cout << "GL error status is: " << glGetError() << std::endl;
-}
-
-void generateSplineVAO() {
-  initSpline();
-
-  pointVAO = new VAO();
-  pointVBO = new VBO(splineVertices.size(), 3, splineVertices[0].data(), GL_STATIC_DRAW);
-  VBO* vboNormals = new VBO(splineVertices.size(), 3, splineNormals[0].data(), GL_STATIC_DRAW);
-
-  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
-  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, vboNormals, "normal");
-
-  LineEBOIndices = splineIndices.size();
-  glGenBuffers(1, &LineEBO);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, LineEBOIndices * sizeof(int), &splineIndices[0], GL_STATIC_DRAW);
-}
-
-void drawGeometry() {
-  pointVAO->Bind();
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
-  glDrawElements(GL_TRIANGLES, LineEBOIndices, GL_UNSIGNED_INT, 0);
-}
-
-
-void initColor(vector<float>& vect, int numVertices) {
-  for (int i = 0; i < numVertices; i++) {
-    vect.push_back(1.0f);
-    vect.push_back(1.0f);
-    vect.push_back(1.0f);
-    vect.push_back(1.0f);
-  }
 }
 
 int initTexture(const char * imageFilename, GLuint textureHandle)
@@ -412,14 +350,14 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
   ImageIO::fileFormatType imgFormat;
   ImageIO::errorType err = img.load(imageFilename, &imgFormat);
 
-  if (err != ImageIO::OK) 
+  if (err != ImageIO::OK)
   {
     printf("Loading texture from %s failed.\n", imageFilename);
     return -1;
   }
 
   // Check that the number of bytes is a multiple of 4.
-  if (img.getWidth() * img.getBytesPerPixel() % 4) 
+  if (img.getWidth() * img.getBytesPerPixel() % 4)
   {
     printf("Error (%s): The width*numChannels in the loaded image must be a multiple of 4.\n", imageFilename);
     return -1;
@@ -433,7 +371,7 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
   // Fill the pixelsRGBA array with the image pixels.
   memset(pixelsRGBA, 0, 4 * width * height); // set all bytes to 0
   for (int h = 0; h < height; h++)
-    for (int w = 0; w < width; w++) 
+    for (int w = 0; w < width; w++)
     {
       // assign some default byte values (for the case where img.getBytesPerPixel() < 4)
       pixelsRGBA[4 * (h * width + w) + 0] = 0; // red
@@ -470,17 +408,163 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
 
   // Query for any errors.
   GLenum errCode = glGetError();
-  if (errCode != 0) 
+  if (errCode != 0)
   {
     printf("Texture initialization error. Error code: %d.\n", errCode);
     return -1;
   }
-  
+
   // De-allocate the pixel array -- it is no longer needed.
   delete [] pixelsRGBA;
 
   return 0;
 }
+
+void generatePlaneVAO() {
+  glGenTextures(1, &texHandle);
+
+  int code = initTexture("../hw2/assets/texture.jpg", texHandle);
+  if (code != 0) {
+    printf("Error loading texture.\n");
+    exit(1);
+  }
+
+  float planeVertices[] = {
+    -100.0f, 0.0f, -100.0f,
+    100.0f, 0.0f, -100.0f,
+    100.0f, 0.0f, 100.0f,
+    -100.0f, 0.0f, 100.0f
+  };
+
+  float planeUVs[] = {
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f,
+    0.0f, 1.0f
+  };
+
+  int numPlaneVertices = 4;
+  int numPlaneIndices =6;
+
+  PlaneVAO = new VAO();
+  PlaneVAO->Bind();
+  VBO* vboPlanePositions = new VBO(numPlaneVertices, 3, planeVertices, GL_STATIC_DRAW);
+  VBO* vboUVs = new VBO(numPlaneVertices, 2, planeUVs, GL_STATIC_DRAW);
+
+  PlaneVAO->ConnectPipelineProgramAndVBOAndShaderVariable(groundPipelineProgram, vboPlanePositions, "position");
+  PlaneVAO->ConnectPipelineProgramAndVBOAndShaderVariable(groundPipelineProgram, vboUVs, "texCoord");
+}
+
+void initScene(int argc, char *argv[])
+{
+  // Set the background color.
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black color.
+
+  // Enable z-buffering (i.e., hidden surface removal using the z-buffer algorithm).
+  glEnable(GL_DEPTH_TEST);
+
+  // Create a pipeline program. This operation must be performed BEFORE we initialize any VAOs.
+  // A pipeline program contains our shaders. Different pipeline programs may contain different shaders.
+  // In this homework, we only have one set of shaders, and therefore, there is only one pipeline program.
+  // In hw2, we will need to shade different objects with different shaders, and therefore, we will have
+  // several pipeline programs (e.g., one for the rails, one for the ground/sky, etc.).
+  pipelineProgram = new PipelineProgram(); // Load and set up the pipeline program, including its shaders.
+  groundPipelineProgram = new PipelineProgram();
+  // Load and set up the pipeline program, including its shaders.
+  if (pipelineProgram->BuildShadersFromFiles(shaderBasePath, "vertexShader.glsl", "fragmentShader.glsl") != 0)
+  {
+    cout << "Failed to build the pipeline program." << endl;
+    throw 1;
+  }
+  cout << "Successfully built the pipeline program." << endl;
+
+  if (groundPipelineProgram->BuildShadersFromFiles(shaderBasePath, "textureShader_vertex.glsl", "textureShader_fragment.glsl") != 0)
+  {
+    cout << "Failed to build the pipeline program." << endl;
+    throw 1;
+  }
+    
+  // Bind the pipeline program that we just created. 
+  // The purpose of binding a pipeline program is to activate the shaders that it contains, i.e.,
+  // any object rendered from that point on, will use those shaders.
+  // When the application starts, no pipeline program is bound, which means that rendering is not set up.
+  // So, at some point (such as below), we need to bind a pipeline program.
+  // From that point on, exactly one pipeline program is bound at any moment of time.
+  generateSplineVAO();
+  generatePlaneVAO();
+  lighting = new Lighting();
+
+
+  // Check for any OpenGL errors.
+  std::cout << "GL error status is: " << glGetError() << std::endl;
+}
+
+void generateSplineVAO() {
+  initSpline();
+
+  pointVAO = new VAO();
+  pointVAO->Bind();
+  pointVBO = new VBO(splineVertices.size(), 3, splineVertices[0].data(), GL_STATIC_DRAW);
+  VBO* vboNormals = new VBO(splineVertices.size(), 3, splineNormals[0].data(), GL_STATIC_DRAW);
+
+  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
+  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, vboNormals, "normal");
+
+  LineEBOIndices = splineIndices.size();
+  glGenBuffers(1, &LineEBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, LineEBOIndices * sizeof(int), &splineIndices[0], GL_STATIC_DRAW);
+}
+
+void drawGeometry(const float * modelViewMatrix, const float * projectionMatrix, const float * n) {
+  pipelineProgram->Bind();
+  pipelineProgram->SetUniformVariableMatrix4fv("normalMatrix", GL_FALSE, n);
+  pipelineProgram->SetUniformVariableMatrix4fv("modelViewMatrix", GL_FALSE, modelViewMatrix);
+  pipelineProgram->SetUniformVariableMatrix4fv("projectionMatrix", GL_FALSE, projectionMatrix);
+
+  //Calculate the light direction in view space.
+  float viewLightOutput[4];
+  MultiplyMatrices(4,4,1, modelViewMatrix, lighting->LIGHT_DIRECTION.data(), viewLightOutput);
+  Vector3 viewLightDirection = Vector3(viewLightOutput[0], viewLightOutput[1], viewLightOutput[2]);
+  pipelineProgram->SetUniformVariable3fv("viewLightDirection", viewLightDirection.data());
+
+  pipelineProgram->SetUniformVariable4fv("La", lighting->AMBIENT_COLOR.data());
+  pipelineProgram->SetUniformVariable4fv("Ld", lighting->DIFFUSE_COLOR.data());
+  pipelineProgram->SetUniformVariable4fv("Ls", lighting->SPECULAR_COLOR.data());
+
+  pipelineProgram->SetUniformVariable4fv("ka", lighting->AMBIENT_REFLECTION_COEFFICIENT.data());
+  pipelineProgram->SetUniformVariable4fv("kd", lighting->DIFFUSE_REFLECTION_COEFFICIENT.data());
+  pipelineProgram->SetUniformVariable4fv("ks", lighting->SPECULAR_REFLECTION_COEFFICIENT.data());
+  pipelineProgram->SetUniformVariablef("alpha", lighting->ALPHA);
+
+  pointVAO->Bind();
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, LineEBO);
+  glDrawElements(GL_TRIANGLES, LineEBOIndices, GL_UNSIGNED_INT, 0);
+
+  groundPipelineProgram->Bind();
+  groundPipelineProgram->SetUniformVariableMatrix4fv("modelViewMatrix", GL_FALSE, modelViewMatrix);
+  groundPipelineProgram->SetUniformVariableMatrix4fv("projectionMatrix", GL_FALSE, projectionMatrix);
+  GLint samplerLoc = glGetUniformLocation(groundPipelineProgram->GetProgramHandle(), "texSampler");
+  if (samplerLoc >= 0)
+    glUniform1i(samplerLoc, 0);
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texHandle);
+
+  PlaneVAO->Bind();
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
+
+void initColor(vector<float>& vect, int numVertices) {
+  for (int i = 0; i < numVertices; i++) {
+    vect.push_back(1.0f);
+    vect.push_back(1.0f);
+    vect.push_back(1.0f);
+    vect.push_back(1.0f);
+  }
+}
+
 
 int main(int argc, char *argv[])
 {

@@ -14,8 +14,8 @@ public:
     Lighting();
     ~Lighting();
     void UpdateLightingUniform(class PipelineProgram* pipelineProgram, const float* modelViewMatrix);
-    private:
-        const Vector4 AMBIENT_COLOR = Vector4(0.3f, 0.3f, 0.3f, 1.0f);
+    public:
+        const Vector4 AMBIENT_COLOR = Vector4(0.8f, 0.8f, 0.8f, 1.0f);
         const Vector4 DIFFUSE_COLOR = Vector4(0.8f, 0.8f, 0.8f, 1.0f);
         const Vector4 SPECULAR_COLOR = Vector4(0.6f, 0.6f, 0.6f, 1.0f);
         const Vector4 LIGHT_DIRECTION = Vector4(0.0f, 0.0f, -1.0f, 0.0f);

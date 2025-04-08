@@ -151,7 +151,7 @@ Vector3 getNextPointOnSpline(float u);
 void generateSplineVAO();
 void generateSplineIndices();
 void generateSplineColors();
-void drawGeometry();
+void drawGeometry(const float * modelViewMatrix, const float * projectionMatrix, const float * n);
 void initColor(std::vector<float>& vect, int numVertices);
 std::vector<float> Vector3ToFloat(const Vector3& vec);
 
