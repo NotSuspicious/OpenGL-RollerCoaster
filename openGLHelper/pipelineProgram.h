@@ -73,11 +73,11 @@ public:
   // Set the uniform variable of type "float". 
   void SetUniformVariablef(const char * name, float value);
   // Set the uniform variable of type "float[3]". 
-  void SetUniformVariable3fv(const char * name, float * value);
+  void SetUniformVariable3fv(const char * name, const float * value);
   // Set the uniform variable of type "float[4]". 
-  void SetUniformVariable4fv(const char * name, float * value);
+  void SetUniformVariable4fv(const char * name, const float * value);
   // Set the uniform variable of type "4x4 matrix of floats" (column-major).
-  void SetUniformVariableMatrix4fv(const char * name, GLboolean transpose, float value[16]);
+  void SetUniformVariableMatrix4fv(const char * name, GLboolean transpose, const float value[16]);
 
 protected:
   GLuint programHandle; // the handle to the pipeline program

@@ -18,6 +18,7 @@ std::vector<Vector3> splinePoints;
 std::vector<Vector3> splineVertices;
 std::vector<Vector4> splineColors;
 std::vector<Vector3> splineTangents;
+std::vector<Vector3> splineNormals;
 
 std::vector<int> splineIndices;
 std::vector<SplineCrossSection> splineCrossSections;
@@ -45,6 +46,7 @@ void generateSplineCrossSections(float radius, int numSegments) {
         splineCrossSections.push_back(crossSection);
         splineVertices.insert(splineVertices.end(), crossSection.vertices.begin(), crossSection.vertices.end());
         splineColors.insert(splineColors.end(), crossSection.colors.begin(), crossSection.colors.end());
+        splineNormals.insert(splineNormals.end(), crossSection.vertexNormals.begin(), crossSection.vertexNormals.end());
     }
 }
 

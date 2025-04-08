@@ -13,8 +13,12 @@ extern std::vector<float> catmullBasis;
 extern struct Spline spline;
 extern int numVerticesPerSpline;
 extern std::vector<Vector3> splinePoints;
+
+// Information per vertex.
 extern std::vector<Vector3> splineVertices;
 extern std::vector<Vector4> splineColors;
+extern std::vector<Vector3> splineNormals;
+
 extern std::vector<int> splineIndices;
 extern std::vector<Vector3> splineTangents;
 extern std::vector<struct SplineCrossSection> splineCrossSections;

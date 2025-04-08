@@ -10,11 +10,12 @@
 #include "glutHeader.h"
 #include "openGLMatrix.h"
 #include "imageIO.h"
-#include "pipelineProgram.h"
-#include "vbo.h"
-#include "vao.h"
+#include "../../openGLHelper/pipelineProgram.h"
+#include "../../openGLHelper/vbo.h"
+#include "../../openGLHelper/vao.h"
 #include "Spline.h"
 #include "Camera.h"
+#include "Lighting.h"
 
 #include <OpenGL/OpenGL.h>
 #include <cmath>
@@ -73,6 +74,8 @@ VAO* pointVAO = nullptr; // VAO for the spline
 VBO* pointVBO = nullptr; // VBO for the spline
 VBO* colorVBO = nullptr; // VBO for the spline colors
 
+Lighting* lighting = nullptr;
+
 int LineEBOIndices = 0;
 GLuint LineEBO; // EBO for the spline
 
@@ -97,6 +100,29 @@ void saveScreenshot(const char * filename)
   else cout << "Failed to save file " << filename << '.' << endl;
 
   delete [] screenshotData;
+}
+
+void Cleanup() {
+  // Clean up the pipeline program.
+  if (pipelineProgram != nullptr)
+  {
+    delete pipelineProgram;
+    pipelineProgram = nullptr;
+  }
+
+  // Clean up the VAO and VBOs.
+  if (pointVAO != nullptr)
+  {
+    delete pointVAO;
+    pointVAO = nullptr;
+  }
+  if (pointVBO != nullptr)
+  {
+    delete pointVBO;
+    pointVBO = nullptr;
+  }
+
+  delete lighting;
 }
 
 void idleFunc()
@@ -242,7 +268,8 @@ void keyboardFunc(unsigned char key, int x, int y)
 {
   switch (key)
   {
-    case 27: // ESC key
+    case 27: // ESC key`
+      Cleanup();
       exit(0); // exit the program
     break;
     case 'x':
@@ -281,17 +308,6 @@ void displayFunc()
   matrix.LookAt(cameraPosition.x, cameraPosition.y, cameraPosition.z,
                 cameraTarget.x, cameraTarget.y, cameraTarget.z,
                 cameraUp.x, cameraUp.y, cameraUp.z);
-  // Default matrix lookat functiin
-  // matrix.LookAt(0.0f, 0.0f, 5.0f,
-  //               0.0f, 0.0f, 0.0f,
-  //               0.0f, 1.0f, 0.0f);
-
-  // In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
-  matrix.Translate(terrainTranslate[0], terrainTranslate[1], terrainTranslate[2]);
-  matrix.Scale(terrainScale[0], terrainScale[1], terrainScale[2]);
-  matrix.Rotate(terrainRotate[0], 1, 0, 0);
-  matrix.Rotate(terrainRotate[1], 0, 1, 0);
-  matrix.Rotate(terrainRotate[2], 0, 0, 1);
 
   // Read the current modelview and projection matrices from our helper class.
   // The matrices are only read here; nothing is actually communicated to OpenGL yet.
@@ -299,15 +315,19 @@ void displayFunc()
   matrix.SetMatrixMode(OpenGLMatrix::ModelView);
   matrix.GetMatrix(modelViewMatrix);
 
+  // Upload Normal Matrix
+  float n[16];
+  matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+  matrix.GetNormalMatrix(n);
+  pipelineProgram->SetUniformVariableMatrix4fv("normalMatrix", GL_FALSE, n);
+
+  // Get projection matrix
   float projectionMatrix[16];
   matrix.SetMatrixMode(OpenGLMatrix::Projection);
   matrix.GetMatrix(projectionMatrix);
 
-  // Upload the modelview and projection matrices to the GPU. Note that these are "uniform" variables.
-  // Important: these matrices must be uploaded to *all* pipeline programs used.
-  // In hw2, there is only one pipeline program, but in hw2 there will be several of them.
-  // In such a case, you must separately upload to *each* pipeline program.
-  // Important: do not make a typo in the variable name below; otherwise, the program will malfunction.
+  lighting->UpdateLightingUniform(pipelineProgram, modelViewMatrix);
+
   pipelineProgram->SetUniformVariableMatrix4fv("modelViewMatrix", GL_FALSE, modelViewMatrix);
   pipelineProgram->SetUniformVariableMatrix4fv("projectionMatrix", GL_FALSE, projectionMatrix);
 
@@ -347,6 +367,7 @@ void initScene(int argc, char *argv[])
   pipelineProgram->Bind();
 
   generateSplineVAO();
+  lighting = new Lighting();
 
   // Check for any OpenGL errors.
   std::cout << "GL error status is: " << glGetError() << std::endl;
@@ -357,10 +378,10 @@ void generateSplineVAO() {
 
   pointVAO = new VAO();
   pointVBO = new VBO(splineVertices.size(), 3, splineVertices[0].data(), GL_STATIC_DRAW);
-  colorVBO = new VBO(splineVertices.size(), 4, splineColors[0].data(), GL_STATIC_DRAW);
+  VBO* vboNormals = new VBO(splineVertices.size(), 3, splineNormals[0].data(), GL_STATIC_DRAW);
 
   pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
-  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, colorVBO, "color");
+  pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, vboNormals, "normal");
 
   LineEBOIndices = splineIndices.size();
   glGenBuffers(1, &LineEBO);
