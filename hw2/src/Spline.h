@@ -25,6 +25,8 @@ struct SplineCrossSection {
     int startIndex;
     int centerVertexIndex;
     std::vector<Vector3> vertices;
+    std::vector<Vector4> colors;
+    std::vector<Vector3> vertexNormals;
     // Generate vertices in a circle given the radius and number of segments.
     void generateVertices(float radius, int numSegments, bool isFace) {
         vertices.clear();
@@ -32,7 +34,12 @@ struct SplineCrossSection {
             const float angle = Math::TwoPi * i / numSegments;
             Vector3 cos = radius * std::cos(angle) * binormal;
             Vector3 sin = radius * std::sin(angle) * normal;
-            vertices.push_back(position + sin + cos);
+            Vector3 vertexPos = position + sin + cos;
+            vertices.push_back(vertexPos);
+            Vector3 vertexNormal = vertexPos - position;
+            vertexNormal.Normalize();
+            vertexNormals.push_back(vertexNormal);
+            colors.push_back(Vector4(vertexNormal.x, vertexNormal.y, vertexNormal.z, 1.0f));
         }
         if (isFace) {
             // vertices.push_back(position);

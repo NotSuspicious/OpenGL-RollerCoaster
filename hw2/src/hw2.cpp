@@ -357,7 +357,7 @@ void generateSplineVAO() {
 
   pointVAO = new VAO();
   pointVBO = new VBO(splineVertices.size(), 3, splineVertices[0].data(), GL_STATIC_DRAW);
-  colorVBO = new VBO(splineVertices.size(), 4, splineVertices[0].data(), GL_STATIC_DRAW);
+  colorVBO = new VBO(splineVertices.size(), 4, splineColors[0].data(), GL_STATIC_DRAW);
 
   pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, pointVBO, "position");
   pointVAO->ConnectPipelineProgramAndVBOAndShaderVariable(pipelineProgram, colorVBO, "color");

@@ -44,6 +44,7 @@ void generateSplineCrossSections(float radius, int numSegments) {
         crossSection.generateVertices(radius, numSegments, i == 0 || i == splinePoints.size() - 1);
         splineCrossSections.push_back(crossSection);
         splineVertices.insert(splineVertices.end(), crossSection.vertices.begin(), crossSection.vertices.end());
+        splineColors.insert(splineColors.end(), crossSection.colors.begin(), crossSection.colors.end());
     }
 }
 
@@ -137,15 +138,6 @@ void initSpline() {
     }
     generateSplineCrossSections(0.01f, 10);
     generateSplineIndices();
-    generateSplineColors();
-}
-
-void generateSplineColors() {
-    splineColors.clear();
-    for (int i = 0; i < splineVertices.size(); i++) {
-        Vector4 color(1.0f, 1.0f, 1.0f, 1.0f);
-        splineColors.push_back(color);
-    }
 }
 
 void createUPrimeMatrix(std::vector<float>& vect, float u) {
