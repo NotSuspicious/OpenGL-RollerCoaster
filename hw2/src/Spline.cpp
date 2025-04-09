@@ -16,56 +16,80 @@ int numVerticesPerSpline = 100;
 std::vector<Vector3> splinePoints;
 
 std::vector<Vector3> splineVertices;
-std::vector<Vector4> splineColors;
 std::vector<Vector3> splineTangents;
 std::vector<Vector3> splineNormals;
 
 std::vector<int> splineIndices;
 std::vector<SplineCrossSection> splineCrossSections;
 
-void generateSplineCrossSections(float radius, int numSegments) {
+std::vector<SplineCrossSection> leftRailCrossSections;
+std::vector<SplineCrossSection> rightRailCrossSections;
+
+
+
+Vector3 getBinormal(Vector3 tangent, Vector3 up) {
+    // Check if tangent and up are almost parallel using fabs from <cmath>
+    if (std::abs(Vector3::Dot(tangent, up)) > 0.99f) {
+        // Use an alternative vector if they are almost parallel, e.g., UnitZ
+        Vector3 alternative = Vector3::UnitZ;
+        Vector3 binormal = Vector3::Cross(tangent, alternative);
+        if (binormal.Length() < 0.001f) { // if tangent is also parallel to UnitZ, use UnitX
+            binormal = Vector3::Cross(tangent, Vector3::UnitX);
+        }
+        binormal.Normalize();
+        return binormal;
+    }
+    Vector3 binormal = Vector3::Cross(tangent, up);
+    binormal.Normalize();
+    return binormal;
+}
+
+Vector3 getNormal(Vector3 tangent, Vector3 up) {
+    Vector3 binormal = getBinormal(tangent, up);
+    Vector3 normal = Vector3::Cross(binormal, tangent);
+    normal.Normalize();
+    return normal;
+}
+
+SplineCrossSection createSplineCrossSection(float radius, int numSegments, int startIndex, Vector3 position, Vector3 tangent, Vector3& up) {
+    SplineCrossSection crossSection;
+    crossSection.position = position;
+    crossSection.tangent = tangent;
+    Vector3 binormal = getBinormal(tangent, up);
+    Vector3 normal = getNormal(tangent, up);
+    crossSection.binormal = binormal;
+    crossSection.normal = normal;
+    crossSection.startIndex = startIndex;
+    crossSection.generateVertices(radius, numSegments);
+    return crossSection;
+}
+
+void generateSplineCrossSections(float radius, int numSegments, float railWidth) {
     splineCrossSections.clear();
-    for (int i = 0; i < splinePoints.size() ; i++){
+    Vector3 up = Vector3::UnitY;
+    for (int i = 0; i < splinePoints.size(); i++){
         SplineCrossSection crossSection;
-        crossSection.position = splinePoints[i];
-        crossSection.tangent = splineTangents[i];
-        Vector3 tangent = crossSection.tangent;
-        Vector3 up = (std::abs(Vector3::Dot(tangent, Vector3::UnitY).x) < 0.99f) ? Vector3::UnitY : Vector3::UnitX;
-    	Vector3 binormal = Vector3::Cross(tangent, up);
-    	binormal.Normalize();
-    	Vector3 normal = Vector3::Cross(binormal, tangent);
-    	normal.Normalize();
-        crossSection.binormal = binormal;
-        crossSection.normal = normal;
-        crossSection.startIndex = i * numSegments * 2;
-        crossSection.generateVertices(radius, numSegments, i == 0 || i == splinePoints.size() - 1);
+        Vector3 position = splinePoints[i] - getBinormal(splineTangents[i], up) * railWidth;
+        Vector3 tangent = splineTangents[i];
+
+        crossSection = createSplineCrossSection(radius, numSegments, splineVertices.size(), position, tangent, up);
 
         splineCrossSections.push_back(crossSection);
         splineVertices.insert(splineVertices.end(), crossSection.vertices.begin(), crossSection.vertices.end());
-        splineColors.insert(splineColors.end(), crossSection.colors.begin(), crossSection.colors.end());
         splineNormals.insert(splineNormals.end(), crossSection.vertexNormals.begin(), crossSection.vertexNormals.end());
     }
 
-//    for (int i = 0; i < splinePoints.size() ; i++){
-//        SplineCrossSection crossSection;
-//        crossSection.position = splinePoints[i];
-//        crossSection.tangent = splineTangents[i];
-//        Vector3 tangent = crossSection.tangent;
-//        Vector3 up = (std::abs(Vector3::Dot(tangent, Vector3::UnitY).x) < 0.99f) ? Vector3::UnitY : Vector3::UnitX;
-//        Vector3 binormal = Vector3::Cross(tangent, up);
-//        binormal.Normalize();
-//        Vector3 normal = Vector3::Cross(binormal, tangent);
-//        normal.Normalize();
-//        crossSection.binormal = binormal;
-//        crossSection.normal = normal;
-//        crossSection.startIndex = i * numSegments * 2;
-//        crossSection.generateVertices(radius, numSegments, i == 0 || i == splinePoints.size() - 1);
-//
-//        splineCrossSections.push_back(crossSection);
-//        splineVertices.insert(splineVertices.end(), crossSection.vertices.begin(), crossSection.vertices.end());
-//        splineColors.insert(splineColors.end(), crossSection.colors.begin(), crossSection.colors.end());
-//        splineNormals.insert(splineNormals.end(), crossSection.vertexNormals.begin(), crossSection.vertexNormals.end());
-//    }
+    for (int i = 0; i < splinePoints.size(); i++){
+        SplineCrossSection crossSection;
+        Vector3 position = splinePoints[i] + getBinormal(splineTangents[i], up) * railWidth;
+        Vector3 tangent = splineTangents[i];
+
+        crossSection = createSplineCrossSection(radius, numSegments, splineVertices.size(), position, tangent, up);
+
+        splineCrossSections.push_back(crossSection);
+        splineVertices.insert(splineVertices.end(), crossSection.vertices.begin(), crossSection.vertices.end());
+        splineNormals.insert(splineNormals.end(), crossSection.vertexNormals.begin(), crossSection.vertexNormals.end());
+    }
 }
 
 std::vector<float> Vector3ToFloat(const Vector3& vec) {
@@ -75,20 +99,20 @@ std::vector<float> Vector3ToFloat(const Vector3& vec) {
 void generateSplineIndices() {
     splineIndices.clear();
 //    SplineCrossSection::generateFaceIndices(splineCrossSections[0], splineIndices);
-    for (int i = 0 ; i < splineCrossSections.size(); ++i) {
+    for (int i = 0 ; i < splineCrossSections.size()/2-1; ++i) {
+        SplineCrossSection::generateSideIndices(splineCrossSections[i], splineCrossSections[i + 1], splineIndices);
+    }
+    for (int i = splineCrossSections.size()/2 ; i < splineCrossSections.size()-1; ++i) {
         SplineCrossSection::generateSideIndices(splineCrossSections[i], splineCrossSections[i + 1], splineIndices);
     }
 //    SplineCrossSection::generateFaceIndices(splineCrossSections[splineCrossSections.size()-1], splineIndices);
 }
 
 Vector3 getPointOnSpline(float u) {
-    // Calculate the step size
     float stepSize = 1.0f / numVerticesPerSpline;
 
-    // Round the value to the nearest multiple of the step size
     float roundedValue = std::round(u / stepSize) * stepSize;
 
-    // Find the index on splinePoints
     int index = static_cast<int>(roundedValue / stepSize);
 
     return splinePoints[index];
@@ -119,7 +143,7 @@ int getSplineIndex(float u) {
 }
 
 void initSpline() {
-    for (int i = 1; i < spline.numControlPoints-2; i++) {
+    for (int i = 1; i < spline.numControlPoints-3; i++) {
         Point a = spline.points[i-1];
         Point b = spline.points[i];
         Point c = spline.points[i+1];
@@ -156,7 +180,7 @@ void initSpline() {
             splineTangents.push_back(tangentVector);
         }
     }
-    generateSplineCrossSections(0.02f, 20);
+    generateSplineCrossSections(0.05f, 20, 0.2f);
     generateSplineIndices();
 }
 

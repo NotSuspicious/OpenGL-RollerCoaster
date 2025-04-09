@@ -16,6 +16,10 @@ struct Vector3
     {
         return Vector3(x + other.x, y + other.y, z + other.z);
     }
+    bool operator==(const Vector3& other) const
+    {
+        return (x == other.x && y == other.y && z == other.z);
+    }
     Vector3 operator-(const Vector3& other) const
     {
         return Vector3(x - other.x, y - other.y, z - other.z);
@@ -29,9 +33,9 @@ struct Vector3
         return Vector3(x / scalar, y / scalar, z / scalar);
     }
 
-    static Vector3 Dot(const Vector3& a, const Vector3& b)
+    static float Dot(const Vector3& a, const Vector3& b)
     {
-        return Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
+        return a.x * b.x + a.y * b.y + a.z * b.z;
     }
     static Vector3 Cross(const Vector3& a, const Vector3& b)
     {

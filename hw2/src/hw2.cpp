@@ -75,6 +75,7 @@ VBO* pointVBO = nullptr; // VBO for the spline
 VBO* colorVBO = nullptr; // VBO for the spline colors
 
 GLuint texHandle = 0; // Texture handle
+GLuint skyTexHandle = 0; // Sky texture handle
 
 Lighting* lighting = nullptr;
 
@@ -85,12 +86,17 @@ VAO* PlaneVAO = nullptr; // VAO for the plane
 int PlaneEBOIndices = 0;
 GLuint PlaneEBO; // EBO for the plane
 
+VAO* skyboxVAOs[6];
+GLuint skyboxTextureHandles[6];
+
 // Number of vertices in the single triangle (starter code).
 
 // CSCI 420 helper classes.
 OpenGLMatrix matrix;
 PipelineProgram * pipelineProgram = nullptr;
 PipelineProgram* groundPipelineProgram = nullptr;
+
+int frameCount = 0;
 
 const int RestartIndex = 0xFFFF;
 
@@ -295,17 +301,17 @@ void keyboardFunc(unsigned char key, int x, int y)
 int screenshotCounter = 0;
 void displayFunc()
 {
+  frameCount++;
   currentTime++;
-  deltaTime = 0.016f; // Simulate a fixed time step for the sake of this example.
-//  if (deltaTime > 5)
-//  {
-//    char filename[64];
-//    snprintf(filename, sizeof(filename), "screenshot_%d.jpg", screenshotCounter++);
-//    saveScreenshot(filename);
-//
-//    lastTime = currentTime;
-//  }
-  // This function performs the actual rendering.
+  deltaTime = 0.016f;
+  // if (frameCount % 4 == 0)
+  // {
+  //   char filename[64];
+  //   snprintf(filename, sizeof(filename), "screenshot_%d.jpg", screenshotCounter++);
+  //   saveScreenshot(filename);
+  //
+  //   lastTime = currentTime;
+  // }
 
   // First, clear the screen.
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -420,6 +426,87 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
   return 0;
 }
 
+void generateCubeMapVAO() {
+
+  const char* faceFilenames[6] = {
+    "../hw2/assets/right.jpg",
+    "../hw2/assets/left.jpg",
+    "../hw2/assets/top.jpg",
+    "../hw2/assets/bottom.jpg",
+    "../hw2/assets/front.jpg",
+    "../hw2/assets/back.jpg"
+  };
+
+  float verticesRight[12] = {
+    50.0f,  50.0f,  50.0f,
+    50.0f, -50.0f,  50.0f,
+    50.0f,  50.0f, -50.0f,
+    50.0f, -50.0f, -50.0f
+  };
+
+  float verticesLeft[12] = {
+    -50.0f,  50.0f, -50.0f,
+    -50.0f, -50.0f, -50.0f,
+    -50.0f,  50.0f,  50.0f,
+    -50.0f, -50.0f,  50.0f
+  };
+
+  float verticesTop[12] = {
+    -50.0f, 50.0f, -50.0f,
+    -50.0f, 50.0f,  50.0f,
+     50.0f, 50.0f, -50.0f,
+     50.0f, 50.0f,  50.0f
+  };
+
+  float verticesBottom[12] = {
+    -50.0f, -50.0f,  50.0f,
+    -50.0f, -50.0f, -50.0f,
+     50.0f, -50.0f,  50.0f,
+     50.0f, -50.0f, -50.0f
+  };
+
+  float verticesFront[12] = {
+    -50.0f,  50.0f, 50.0f,
+    -50.0f, -50.0f, 50.0f,
+     50.0f,  50.0f, 50.0f,
+     50.0f, -50.0f, 50.0f
+  };
+
+  float verticesBack[12] = {
+     50.0f,  50.0f, -50.0f,
+     50.0f, -50.0f, -50.0f,
+    -50.0f,  50.0f, -50.0f,
+    -50.0f, -50.0f, -50.0f
+  };
+
+  float planeUVs[8] = {
+    0.0f, 1.0f,  // top left
+    0.0f, 0.0f,  // bottom left
+    1.0f, 1.0f,  // top right
+    1.0f, 0.0f   // bottom right
+  };
+
+  float* faceVertices[6] = { verticesRight, verticesLeft, verticesTop, verticesBottom, verticesFront, verticesBack };
+
+  for (int i = 0; i < 6; i++) {
+    glGenTextures(1, &skyboxTextureHandles[i]);
+    int code = initTexture(faceFilenames[i], skyboxTextureHandles[i]);
+    if (code != 0) {
+      printf("Error loading texture: %s\n", faceFilenames[i]);
+      exit(1);
+    }
+
+    skyboxVAOs[i] = new VAO();
+    skyboxVAOs[i]->Bind();
+
+    // Create VBOs for positions (4 vertices, 3 components each) and UVs (4 vertices, 2 components each)
+    VBO* vboPositions = new VBO(4, 3, faceVertices[i], GL_STATIC_DRAW);
+    VBO* vboUVs = new VBO(4, 2, planeUVs, GL_STATIC_DRAW);
+
+    skyboxVAOs[i]->ConnectPipelineProgramAndVBOAndShaderVariable(groundPipelineProgram, vboPositions, "position");
+    skyboxVAOs[i]->ConnectPipelineProgramAndVBOAndShaderVariable(groundPipelineProgram, vboUVs, "texCoord");
+  }
+}
 void generatePlaneVAO() {
   glGenTextures(1, &texHandle);
 
@@ -430,10 +517,10 @@ void generatePlaneVAO() {
   }
 
   float planeVertices[] = {
-    -100.0f, 0.0f, -100.0f,
-    100.0f, 0.0f, -100.0f,
-    100.0f, 0.0f, 100.0f,
-    -100.0f, 0.0f, 100.0f
+    -100.0f, -5.0f, -100.0f,
+    100.0f, -5.0f, -100.0f,
+    100.0f, -5.0f, 100.0f,
+    -100.0f, -5.0f, 100.0f
   };
 
   float planeUVs[] = {
@@ -492,6 +579,7 @@ void initScene(int argc, char *argv[])
   // From that point on, exactly one pipeline program is bound at any moment of time.
   generateSplineVAO();
   generatePlaneVAO();
+  generateCubeMapVAO();
   lighting = new Lighting();
 
 
@@ -553,6 +641,13 @@ void drawGeometry(const float * modelViewMatrix, const float * projectionMatrix,
 
   PlaneVAO->Bind();
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+  for (int i = 0; i < 6; i++) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, skyboxTextureHandles[i]);
+    skyboxVAOs[i]->Bind();
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  }
 }
 
 

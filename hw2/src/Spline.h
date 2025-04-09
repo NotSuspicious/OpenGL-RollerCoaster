@@ -16,12 +16,15 @@ extern std::vector<Vector3> splinePoints;
 
 // Information per vertex.
 extern std::vector<Vector3> splineVertices;
-extern std::vector<Vector4> splineColors;
 extern std::vector<Vector3> splineNormals;
 
 extern std::vector<int> splineIndices;
 extern std::vector<Vector3> splineTangents;
 extern std::vector<struct SplineCrossSection> splineCrossSections;
+
+extern std::vector<struct SplineCrossSection> leftRailCrossSections;
+extern std::vector<struct SplineCrossSection> rightRailCrossSections;
+
 
 struct SplineCrossSection {
     Vector3 normal, binormal, tangent;
@@ -29,10 +32,9 @@ struct SplineCrossSection {
     int startIndex;
     int centerVertexIndex;
     std::vector<Vector3> vertices;
-    std::vector<Vector4> colors;
     std::vector<Vector3> vertexNormals;
     // Generate vertices in a circle given the radius and number of segments.
-    void generateVertices(float radius, int numSegments, bool isFace) {
+    void generateVertices(float radius, int numSegments) {
         vertices.clear();
         for (int i = 0; i < numSegments; ++i) {
             const float angle = Math::TwoPi * i / numSegments;
@@ -43,15 +45,10 @@ struct SplineCrossSection {
             Vector3 vertexNormal = vertexPos - position;
             vertexNormal.Normalize();
             vertexNormals.push_back(vertexNormal);
-            colors.push_back(Vector4(vertexNormal.x, vertexNormal.y, vertexNormal.z, 1.0f));
-        }
-        if (isFace) {
-            // vertices.push_back(position);
         }
     }
 
     static void generateSideIndices(const SplineCrossSection& a, const SplineCrossSection& b, std::vector<int>& indices) {
-
         for (int i = 0 ; i < a.vertices.size(); ++i) {
             int aIndex = a.startIndex + i;
             int bNextIndex = b.startIndex + (i + 1) % b.vertices.size();
@@ -150,7 +147,6 @@ int getSplineIndex(float u);
 Vector3 getNextPointOnSpline(float u);
 void generateSplineVAO();
 void generateSplineIndices();
-void generateSplineColors();
 void drawGeometry(const float * modelViewMatrix, const float * projectionMatrix, const float * n);
 void initColor(std::vector<float>& vect, int numVertices);
 std::vector<float> Vector3ToFloat(const Vector3& vec);

@@ -15,11 +15,11 @@ public:
     ~Lighting();
     void UpdateLightingUniform(class PipelineProgram* pipelineProgram, const float* modelViewMatrix);
     public:
-        const Vector4 AMBIENT_COLOR = Vector4(0.8f, 0.8f, 0.8f, 1.0f);
-        const Vector4 DIFFUSE_COLOR = Vector4(0.8f, 0.8f, 0.8f, 1.0f);
-        const Vector4 SPECULAR_COLOR = Vector4(0.6f, 0.6f, 0.6f, 1.0f);
+        const Vector4 AMBIENT_COLOR = Vector4(0.8f, 0.8f, 1.0f, 1.0f);
+        const Vector4 DIFFUSE_COLOR = Vector4(0.8f, 0.8f, 1.0f, 1.0f);
+        const Vector4 SPECULAR_COLOR = Vector4(0.6f, 0.6f, 0.9f, 1.0f);
         const Vector4 LIGHT_DIRECTION = Vector4(0.0f, 0.0f, -1.0f, 0.0f);
-        const Vector4 AMBIENT_REFLECTION_COEFFICIENT = Vector4(0.2f, 0.2f, 0.2f, 1.0f);
+        const Vector4 AMBIENT_REFLECTION_COEFFICIENT = Vector4(0.6f, 0.6f, 0.6f, 1.0f);
         const Vector4 DIFFUSE_REFLECTION_COEFFICIENT = Vector4(0.8f, 0.8f, 0.8f, 1.0f);
         const Vector4 SPECULAR_REFLECTION_COEFFICIENT = Vector4(0.5f, 0.5f, 0.5f, 1.0f);
         const float ALPHA = 32.0f;
